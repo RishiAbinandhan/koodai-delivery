@@ -1,77 +1,200 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CheckCircle, Edit2 } from "lucide-react";
 import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import { toast } from "sonner";
 
+import { db } from "../../firebase/firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+
+import { useOnboardingStore } from "../../store/useOnboardingStore";
+
 export default function Step6Review() {
-    const navigate = useNavigate();
+  const navigate = useNavigate();
+  const [submitting, setSubmitting] = useState(false);
 
-    const handleSubmit = () => {
-        toast.success("Application Submitted!", {
-            description: "Your profile is under verification. You can now access the dashboard."
-        });
-        // Simulate API call
-        setTimeout(() => {
-            navigate("/dashboard");
-        }, 1500);
-    };
+  const { basicInfo, permissions, vehicle, payment, kyc, reset } =
+    useOnboardingStore();
 
-    return (
-        <div className="space-y-6">
-            <div>
-                <h1 className="text-2xl font-bold">Review Application</h1>
-                <p className="text-muted-foreground">Please review your details before submitting.</p>
-            </div>
+  /* ---------- GUARD ---------- */
+  useEffect(() => {
+    if (!basicInfo || !permissions || !vehicle || !payment || !kyc) {
+      toast.error("Incomplete onboarding");
+      navigate("/onboarding/step-1");
+    }
+  }, []);
 
-            <div className="space-y-4">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-base font-semibold">Basic Info</CardTitle>
-                        <Button variant="ghost" size="sm" onClick={() => navigate("/onboarding/step-1")}><Edit2 className="w-4 h-4" /></Button>
-                    </CardHeader>
-                    <CardContent className="text-sm space-y-1">
-                        <p><span className="text-muted-foreground">Name:</span> John Doe</p>
-                        <p><span className="text-muted-foreground">Phone:</span> +91 98765 43210</p>
-                        <p><span className="text-muted-foreground">Email:</span> john@example.com</p>
-                    </CardContent>
-                </Card>
+  /* ---------- HELPERS ---------- */
+  const maskAccount = (acc?: string) =>
+    acc ? "••••••••" + acc.slice(-4) : "";
 
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-base font-semibold">Vehicle</CardTitle>
-                        <Button variant="ghost" size="sm" onClick={() => navigate("/onboarding/step-4")}><Edit2 className="w-4 h-4" /></Button>
-                    </CardHeader>
-                    <CardContent className="text-sm space-y-1">
-                        <p><span className="text-muted-foreground">Type:</span> Motorcycle</p>
-                        <p><span className="text-muted-foreground">Plate:</span> TN 01 AB 1234</p>
-                        <p><span className="text-muted-foreground">DL:</span> TN01 20200001234</p>
-                    </CardContent>
-                </Card>
+  /* ---------- SUBMIT ---------- */
+  const handleSubmit = async () => {
+    if (submitting) return;
 
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-base font-semibold">Payout</CardTitle>
-                        <Button variant="ghost" size="sm" onClick={() => navigate("/onboarding/step-5")}><Edit2 className="w-4 h-4" /></Button>
-                    </CardHeader>
-                    <CardContent className="text-sm space-y-1">
-                        <p><span className="text-muted-foreground">Bank:</span> SBI</p>
-                        <p><span className="text-muted-foreground">Account:</span> ••••••••1234</p>
-                    </CardContent>
-                </Card>
-            </div>
+    try {
+      setSubmitting(true);
 
-            <div className="bg-green-50 p-4 rounded-xl flex items-start gap-3">
-                <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
-                <div className="flex-1">
-                    <p className="text-sm font-medium text-green-800">Ready to Submit?</p>
-                    <p className="text-xs text-green-600 mt-1">By submitting, you confirm that all details provided are accurate. False information may lead to account suspension.</p>
-                </div>
-            </div>
+      await addDoc(collection(db, "delivery"), {
+        basicInfo,
+        permissions,
+        vehicle,
+        payment,
+        kyc, // Base64 documents
+        status: "pending_verification",
+        createdAt: serverTimestamp(),
+      });
 
-            <Button onClick={handleSubmit} className="w-full bg-yellow-400 hover:bg-yellow-500 text-black py-6 text-lg font-medium">
-                Submit Application
-            </Button>
+      toast.success("Application submitted!", {
+        description: "Your profile is under verification.",
+      });
+
+      setTimeout(() => {
+        reset();
+        navigate("/welcome");
+      }, 1500);
+    } catch {
+      toast.error("Submission failed. Try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  /* ---------- UI ---------- */
+  /* ---------- UI ---------- */
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Review Application</h1>
+        <p className="text-muted-foreground">
+          Please review your details before submitting.
+        </p>
+      </div>
+
+      {/* BASIC INFO */}
+      <Card className="bg-card">
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-base font-semibold text-foreground">
+            Basic Info
+          </CardTitle>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/onboarding/step-1")}
+            className="hover:bg-accent/50"
+          >
+            <Edit2 className="w-4 h-4" />
+          </Button>
+        </CardHeader>
+
+        <CardContent className="text-sm space-y-1 text-muted-foreground">
+          <p>
+            <span className="text-foreground">Name:</span>{" "}
+            {basicInfo?.name}
+          </p>
+          <p>
+            <span className="text-foreground">Phone:</span>{" "}
+            {basicInfo?.phone}
+          </p>
+          <p>
+            <span className="text-foreground">Email:</span>{" "}
+            {basicInfo?.email}
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* VEHICLE */}
+      <Card className="bg-card">
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-base font-semibold text-foreground">
+            Vehicle
+          </CardTitle>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/onboarding/step-4")}
+            className="hover:bg-accent/50"
+          >
+            <Edit2 className="w-4 h-4" />
+          </Button>
+        </CardHeader>
+
+        <CardContent className="text-sm space-y-1 text-muted-foreground">
+          <p>
+            <span className="text-foreground">Type:</span>{" "}
+            {vehicle?.vehicleType}
+          </p>
+          <p>
+            <span className="text-foreground">Plate:</span>{" "}
+            {vehicle?.plate}
+          </p>
+          <p>
+            <span className="text-foreground">DL:</span>{" "}
+            {vehicle?.license}
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* PAYMENT */}
+      <Card className="bg-card">
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-base font-semibold text-foreground">
+            Payout
+          </CardTitle>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/onboarding/step-5")}
+            className="hover:bg-accent/50"
+          >
+            <Edit2 className="w-4 h-4" />
+          </Button>
+        </CardHeader>
+
+        <CardContent className="text-sm space-y-1 text-muted-foreground">
+          <p>
+            <span className="text-foreground">
+              Account Holder:
+            </span>{" "}
+            {payment?.holderName}
+          </p>
+          <p>
+            <span className="text-foreground">Account:</span>{" "}
+            {maskAccount(payment?.accountNo)}
+          </p>
+          <p>
+            <span className="text-foreground">IFSC:</span>{" "}
+            {payment?.ifsc}
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* CONFIRM */}
+      <div className="bg-green-50 dark:bg-green-950 p-4 rounded-xl flex items-start gap-3">
+        <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5" />
+        <div>
+          <p className="text-sm font-medium text-green-800 dark:text-green-300">
+            Ready to submit?
+          </p>
+          <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+            By submitting, you confirm all details are accurate.
+          </p>
         </div>
-    );
+      </div>
+
+      <Button
+        onClick={handleSubmit}
+        disabled={submitting}
+        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-6 text-lg font-medium disabled:opacity-50"
+      >
+        {submitting ? "Submitting..." : "Submit Application"}
+      </Button>
+    </div>
+  );
 }

@@ -27,17 +27,17 @@ export default function OnboardingLayout() {
     }, [location]);
 
     return (
-        <div className="flex flex-col min-h-screen bg-white">
+        <div className="flex flex-col min-h-screen bg-background">
             {/* Header */}
-            <div className="p-4 border-b flex items-center gap-4 sticky top-0 bg-white z-10">
+            <div className="p-4 border-b border-border flex items-center gap-4 sticky top-0 bg-background z-10">
                 <Button variant="ghost" size="icon" onClick={() => navigate(-1)} disabled={location.pathname === steps[0]}>
                     <ArrowLeft className="w-5 h-5" />
                 </Button>
                 <div className="flex-1">
-                    <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Onboarding</h2>
+                    <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Onboarding</h2>
                     <div className="flex items-center gap-2">
                         <Progress value={progress} className="h-2" />
-                        <span className="text-xs font-medium text-gray-700 min-w-[3ch]">{Math.round(progress)}%</span>
+                        <span className="text-xs font-medium text-foreground min-w-[3ch]">{Math.round(progress)}%</span>
                     </div>
                 </div>
             </div>

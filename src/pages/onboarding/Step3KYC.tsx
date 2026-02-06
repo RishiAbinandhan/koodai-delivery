@@ -1,68 +1,178 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Upload } from "lucide-react";
+import { Upload, X } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
-import { Card, CardContent } from "../../components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
+import { toast } from "sonner";
+import { useOnboardingStore } from "../../store/useOnboardingStore";
 
+/* ---------- CONSTANTS ---------- */
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "application/pdf"];
+
+/* ---------- COMPONENT ---------- */
 export default function Step3KYC() {
-    const navigate = useNavigate();
+  const navigate = useNavigate();
+  const setKYC = useOnboardingStore((s) => s.setKYC);
 
-    const handleNext = () => {
-        navigate("/onboarding/step-4");
-    };
+  const [aadhaar, setAadhaar] = useState<File | null>(null);
+  const [pan, setPan] = useState<File | null>(null);
+  const [license, setLicense] = useState<File | null>(null);
 
-    return (
-        <div className="space-y-6">
-            <div>
-                <h1 className="text-2xl font-bold">Identity Verification</h1>
-                <p className="text-muted-foreground">Upload government issued ID for verification.</p>
-            </div>
+  const [previewFile, setPreviewFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
 
-            <div className="space-y-6">
-                <div className="space-y-2">
-                    <Label htmlFor="id-type">Document Type</Label>
-                    <Select defaultValue="aadhar">
-                        <SelectTrigger>
-                            <SelectValue placeholder="Select ID Type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="aadhar">Aadhar Card</SelectItem>
-                            <SelectItem value="dl">Driving License</SelectItem>
-                            <SelectItem value="pan">PAN Card</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
+  /* ---------- HELPERS ---------- */
 
-                <div className="space-y-2">
-                    <Label>Front Side</Label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer">
-                        <div className="p-3 bg-white rounded-full shadow-sm mb-3">
-                            <Upload className="w-6 h-6 text-gray-400" />
-                        </div>
-                        <p className="text-sm font-medium text-gray-700">Click to upload front side</p>
-                        <p className="text-xs text-gray-500 mt-1">JPG, PNG or PDF (Max 5MB)</p>
-                        <Input type="file" className="hidden" />
-                    </div>
-                </div>
+  const validateFile = (file: File | null, label: string) => {
+    if (!file) {
+      toast.error(`${label} is required`);
+      return false;
+    }
 
-                <div className="space-y-2">
-                    <Label>Back Side</Label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer">
-                        <div className="p-3 bg-white rounded-full shadow-sm mb-3">
-                            <Upload className="w-6 h-6 text-gray-400" />
-                        </div>
-                        <p className="text-sm font-medium text-gray-700">Click to upload back side</p>
-                        <p className="text-xs text-gray-500 mt-1">JPG, PNG or PDF (Max 5MB)</p>
-                        <Input type="file" className="hidden" />
-                    </div>
-                </div>
-            </div>
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      toast.error(`${label}: Only JPG, PNG or PDF allowed`);
+      return false;
+    }
 
-            <Button onClick={handleNext} className="w-full bg-yellow-400 hover:bg-yellow-500 text-black py-6 text-lg font-medium">
-                Submit Documents
-            </Button>
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error(`${label}: File must be under 5MB`);
+      return false;
+    }
+
+    return true;
+  };
+
+  const fileToBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  /* ---------- SUBMIT ---------- */
+
+  const handleNext = async () => {
+    if (!validateFile(aadhaar, "Aadhaar Card")) return;
+    if (!validateFile(pan, "PAN Card")) return;
+    if (!validateFile(license, "Driving License")) return;
+
+    try {
+      setLoading(true);
+
+      const aadhaarBase64 = await fileToBase64(aadhaar!);
+      const panBase64 = await fileToBase64(pan!);
+      const licenseBase64 = await fileToBase64(license!);
+
+      setKYC({
+        aadhaarBase64,
+        panBase64,
+        licenseBase64,
+      });
+
+      toast.success("Documents attached successfully");
+      navigate("/onboarding/step-4");
+    } catch {
+      toast.error("Failed to process documents");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* ---------- UPLOAD BOX ---------- */
+
+  const UploadBox = ({
+    label,
+    file,
+    setFile,
+  }: {
+    label: string;
+    file: File | null;
+    setFile: (file: File | null) => void;
+  }) => (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+
+      <div className="border-2 border-dashed border-border rounded-xl p-6 bg-muted/50">
+        {!file ? (
+          <label className="cursor-pointer flex flex-col items-center">
+            <Upload className="w-6 h-6 text-muted-foreground mb-3" />
+            <p className="text-sm font-medium text-muted-foreground">
+              Click to upload {label}
+            </p>
+            <Input
+              type="file"
+              className="hidden"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+            />
+          </label>
+        ) : (
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setPreviewFile(file)}
+              className="text-sm text-blue-600 dark:text-blue-400 underline"
+            >
+              {file.name}
+            </button>
+
+            <button onClick={() => setFile(null)}>
+              <X className="w-4 h-4 text-destructive" />
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  /* ---------- UI ---------- */
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold text-foreground">KYC Verification</h1>
+
+      <UploadBox label="Aadhaar Card" file={aadhaar} setFile={setAadhaar} />
+      <UploadBox label="PAN Card" file={pan} setFile={setPan} />
+      <UploadBox
+        label="Driving License"
+        file={license}
+        setFile={setLicense}
+      />
+
+      <Button
+        onClick={handleNext}
+        disabled={loading}
+        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-6 text-lg disabled:opacity-50"
+      >
+        {loading ? "Processing..." : "Submit Documents"}
+      </Button>
+
+      {/* PREVIEW MODAL */}
+      {previewFile && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-card p-4 rounded-xl max-w-lg w-full relative border border-border">
+            <button
+              className="absolute top-2 right-2"
+              onClick={() => setPreviewFile(null)}
+            >
+              <X className="text-foreground" />
+            </button>
+
+            {previewFile.type === "application/pdf" ? (
+              <iframe
+                src={URL.createObjectURL(previewFile)}
+                className="w-full h-[500px]"
+              />
+            ) : (
+              <img
+                src={URL.createObjectURL(previewFile)}
+                className="w-full rounded-lg"
+              />
+            )}
+          </div>
         </div>
-    );
+      )}
+    </div>
+  );
 }

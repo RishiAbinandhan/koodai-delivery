@@ -53,12 +53,12 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-yellow-50 to-white flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <div className="p-4">
         <button
           onClick={() => navigate("/")}
-          className="flex items-center gap-2 text-gray-600 hover:text-black"
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="w-5 h-5" />
           Back
@@ -67,11 +67,11 @@ export default function Login() {
 
       {/* Content */}
       <div className="flex-1 flex flex-col items-center px-4">
-        <h1 className="text-2xl font-bold text-black mb-2 mt-6">
+        <h1 className="text-2xl font-bold text-foreground mb-2 mt-6">
           {isSignup ? "Partner Registration" : "Partner Login"}
         </h1>
 
-        <p className="text-gray-600 text-center mb-8">
+        <p className="text-muted-foreground text-center mb-8">
           {step === "phone"
             ? "Enter your mobile number to continue"
             : `Verify OTP sent to +91 ${phone}`}
@@ -81,11 +81,11 @@ export default function Login() {
           {step === "phone" ? (
             <>
               <div className="flex gap-2">
-                <div className="w-14 flex items-center justify-center bg-white border rounded-xl">
+                <div className="w-14 flex items-center justify-center bg-card border border-border rounded-xl text-foreground">
                   +91
                 </div>
                 <div className="relative flex-1">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <Input
                     type="tel"
                     value={phone}
@@ -101,7 +101,7 @@ export default function Login() {
               <Button
                 onClick={sendOTP}
                 disabled={loading || phone.length !== 10}
-                className="w-full bg-yellow-400 hover:bg-yellow-500 text-black py-6 rounded-xl"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-6 rounded-xl"
               >
                 {loading ? "Sending OTP..." : "Get OTP"}
               </Button>
@@ -115,7 +115,7 @@ export default function Login() {
                       <InputOTPSlot
                         key={i}
                         index={i}
-                        className="w-12 h-12 border-2 rounded-xl"
+                        className="w-12 h-12 border-2 rounded-xl border-border bg-card text-foreground"
                       />
                     ))}
                   </InputOTPGroup>
@@ -125,7 +125,7 @@ export default function Login() {
               <Button
                 onClick={verifyOTP}
                 disabled={otp.length !== 6}
-                className="w-full bg-yellow-400 hover:bg-yellow-500 text-black py-6 rounded-xl"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-6 rounded-xl"
               >
                 Verify & Continue
               </Button>
@@ -133,7 +133,7 @@ export default function Login() {
               <Button
                 variant="ghost"
                 onClick={() => setStep("phone")}
-                className="w-full"
+                className="w-full text-foreground hover:bg-accent"
               >
                 Change Number
               </Button>
